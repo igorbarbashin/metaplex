@@ -311,7 +311,8 @@ programCommand('withdraw')
     }
   });
 
-programCommand('verify_assets')
+program
+  .command('verify_assets')
   .argument(
     '<directory>',
     'Directory containing images and metadata files named from 0-n',
@@ -391,8 +392,9 @@ programCommand('verify_upload')
               );*/
               cacheItem.onChain = false;
               allGood = false;
+            } else {
+              cacheItem.verifyRun = true;
             }
-            cacheItem.verifyRun = true;
           }
         },
       ),
@@ -708,12 +710,13 @@ programCommand('mint_one_token')
     '-r, --rpc-url <string>',
     'custom rpc url since this is a heavy command',
   )
+  .option('-r, --recipient <string>', 'Recipient address')
   .action(async (directory, cmd) => {
-    const { keypair, env, cacheName, rpcUrl } = cmd.opts();
+    const { keypair, env, cacheName, rpcUrl, recipient } = cmd.opts();
 
     const cacheContent = loadCache(cacheName, env);
     const candyMachine = new PublicKey(cacheContent.program.candyMachine);
-    const tx = await mintV2(keypair, env, candyMachine, rpcUrl);
+    const tx = await mintV2(keypair, env, candyMachine, rpcUrl, recipient);
 
     log.info('mint_one_token finished', tx);
   });
@@ -898,7 +901,8 @@ programCommand('get_all_mint_addresses').action(async (directory, cmd) => {
   console.log(JSON.stringify(addresses, null, 2));
 });
 
-programCommand('generate_art_configurations')
+program
+  .command('generate_art_configurations')
   .argument('<directory>', 'Directory containing traits named from 0-n', val =>
     fs.readdirSync(`${val}`),
   )
@@ -918,7 +922,8 @@ programCommand('generate_art_configurations')
     }
   });
 
-programCommand('create_generative_art')
+program
+  .command('create_generative_art')
   .option(
     '-n, --number-of-images <string>',
     'Number of images to be generated',
