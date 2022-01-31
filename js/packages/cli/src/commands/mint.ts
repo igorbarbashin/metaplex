@@ -162,6 +162,7 @@ export async function mintV2(
   env: string,
   candyMachineAddress: PublicKey,
   rpcUrl: string,
+  recipient?: string,
 ): Promise<string> {
   const mint = Keypair.generate();
 
@@ -339,6 +340,39 @@ export async function mintV2(
         remainingAccounts.length > 0 ? remainingAccounts : undefined,
     }),
   );
+
+  if (recipient) {
+    const destinationPublicKey = new PublicKey(recipient);
+    const destinationTokenAccountAddress = await getTokenWallet(
+      destinationPublicKey,
+      mint.publicKey,
+    );
+
+    console.log({
+      userTokenAccountAddress: userTokenAccountAddress.toString(),
+      mint: mint.publicKey.toString(),
+      destinationTokenAccountAddress: destinationTokenAccountAddress.toString(),
+    });
+
+    instructions.push(
+      createAssociatedTokenAccountInstruction(
+        destinationTokenAccountAddress,
+        userKeyPair.publicKey,
+        destinationPublicKey,
+        mint.publicKey,
+      ),
+      Token.createTransferCheckedInstruction(
+        TOKEN_PROGRAM_ID,
+        userTokenAccountAddress,
+        mint.publicKey,
+        destinationTokenAccountAddress,
+        userKeyPair.publicKey,
+        [],
+        1,
+        0,
+      ),
+    );
+  }
 
   const finished = (
     await sendTransactionWithRetryWithKeypair(
