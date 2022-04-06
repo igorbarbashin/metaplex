@@ -128,6 +128,7 @@ export async function uploadV2({
 
       // initialize candy
       log.info(`initializing candy machine`);
+      log.info(firstAssetManifest.properties.creators);
       const res = await createCandyMachineV2(
         anchorProgram,
         walletKeyPair,
@@ -235,17 +236,11 @@ export async function uploadV2({
                 log.info(`Processing asset: ${allIndexesInSlice[i]}`);
               }
 
-              const image = path.join(
-                dirname,
-                `${manifest.image}`,
-              );
+              const image = path.join(dirname, `${manifest.image}`);
 
               let animation = undefined;
               if ('animation_url' in manifest) {
-                animation = path.join(
-                  dirname,
-                  `${manifest.animation_url}`,
-                );
+                animation = path.join(dirname, `${manifest.animation_url}`);
               }
 
               const manifestBuffer = Buffer.from(JSON.stringify(manifest));
@@ -290,7 +285,11 @@ export async function uploadV2({
                       assetKey.index,
                     );
                 }
-                if (animation ? link && imageLink && animationLink : link && imageLink) {
+                if (
+                  animation
+                    ? link && imageLink && animationLink
+                    : link && imageLink
+                ) {
                   log.debug('Updating cache for ', allIndexesInSlice[i]);
                   cacheContent.items[assetKey.index] = {
                     link,
@@ -301,7 +300,10 @@ export async function uploadV2({
                 }
               } catch (err) {
                 if (animation) {
-                  log.error(`Error uploading files ${manifest.image} + ${manifest.animation_url}`, err);
+                  log.error(
+                    `Error uploading files ${manifest.image} + ${manifest.animation_url}`,
+                    err,
+                  );
                 } else {
                   log.error(`Error uploading file ${manifest.image}`, err);
                 }
@@ -470,7 +472,10 @@ function getAssetManifest(dirname: string, assetKey: string): Manifest {
       manifest.properties.files[0]?.uri?.replace('image', assetIndex);
   }
   if ('animation_url' in manifest) {
-    manifest.animation_url = manifest.animation_url.replace('animation_url', assetIndex);
+    manifest.animation_url = manifest.animation_url.replace(
+      'animation_url',
+      assetIndex,
+    );
     if (manifest.properties?.files?.length > 0) {
       manifest.properties.files[1].uri =
         manifest.properties.files[1]?.uri?.replace('animation_url', assetIndex);
@@ -706,10 +711,7 @@ export async function upload({
               );
               let animation = undefined;
               if ('animation_url' in manifest) {
-                animation = path.join(
-                  dirname,
-                  `${manifest.animation_url}`,
-                );
+                animation = path.join(dirname, `${manifest.animation_url}`);
               }
               const manifestBuffer = Buffer.from(JSON.stringify(manifest));
               if (i >= lastPrinted + tick || i === 0) {
@@ -749,7 +751,11 @@ export async function upload({
                       i,
                     );
                 }
-                if (animation ? link && imageLink && animationLink : link && imageLink) {
+                if (
+                  animation
+                    ? link && imageLink && animationLink
+                    : link && imageLink
+                ) {
                   log.debug('Updating cache for ', assetKey);
                   cache.items[assetKey.index] = {
                     link,

@@ -185,8 +185,7 @@ programCommand('upload')
       throw new Error(
         `number of animation files (${animationFileCount}) is different than the number of json files (${jsonFileCount})`,
       );
-    }
-    else if (imageFileCount !== jsonFileCount) {
+    } else if (imageFileCount !== jsonFileCount) {
       throw new Error(
         `number of img files (${imageFileCount}) is different than the number of json files (${jsonFileCount})`,
       );
@@ -201,11 +200,11 @@ programCommand('upload')
 
     if (animationFileCount === 0) {
       log.info(`Beginning the upload for ${elemCount} (img+json) pairs`);
+    } else {
+      log.info(
+        `Beginning the upload for ${elemCount} (img+animation+json) sets`,
+      );
     }
-    else {
-      log.info(`Beginning the upload for ${elemCount} (img+animation+json) sets`);
-    }
-    
 
     const startMs = Date.now();
     log.info('started at: ' + startMs.toString());
@@ -736,7 +735,7 @@ programCommand('mint_one_token')
     '-r, --rpc-url <string>',
     'custom rpc url since this is a heavy command',
   )
-  .option('-r, --recipient <string>', 'Recipient address')
+  .option('-a, --recipient <string>', 'Recipient address')
   .action(async (directory, cmd) => {
     const { keypair, env, cacheName, rpcUrl, recipient } = cmd.opts();
 
