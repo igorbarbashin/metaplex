@@ -128,6 +128,7 @@ export async function uploadV2({
 
       // initialize candy
       log.info(`initializing candy machine`);
+      log.info(firstAssetManifest.properties.creators);
       const res = await createCandyMachineV2(
         anchorProgram,
         walletKeyPair,
@@ -220,17 +221,12 @@ export async function uploadV2({
           async allIndexesInSlice => {
             for (let i = 0; i < allIndexesInSlice.length; i++) {
               const assetKey = dedupedAssetKeys[allIndexesInSlice[i]];
-              const image = path.join(
-                dirname,
-                `${assetKey.index}${assetKey.mediaExt}`,
-              );
               const manifest = getAssetManifest(
                 dirname,
                 assetKey.index.includes('json')
                   ? assetKey.index
                   : `${assetKey.index}.json`,
               );
-              const manifestBuffer = Buffer.from(JSON.stringify(manifest));
 
               if (
                 allIndexesInSlice[i] >= lastPrinted + tick ||
@@ -240,43 +236,60 @@ export async function uploadV2({
                 log.info(`Processing asset: ${allIndexesInSlice[i]}`);
               }
 
-              let link, imageLink;
+              const image = path.join(dirname, `${manifest.image}`);
+
+              let animation = undefined;
+              if ('animation_url' in manifest) {
+                animation = path.join(dirname, `${manifest.animation_url}`);
+              }
+
+              const manifestBuffer = Buffer.from(JSON.stringify(manifest));
+
+              let link, imageLink, animationLink;
               try {
                 switch (storage) {
                   case StorageType.NftStorage:
-                    [link, imageLink] = await nftStorageUpload(
+                    [link, imageLink, animationLink] = await nftStorageUpload(
                       nftStorageKey,
                       image,
+                      animation,
                       manifestBuffer,
                     );
                     break;
                   case StorageType.Ipfs:
-                    [link, imageLink] = await ipfsUpload(
+                    [link, imageLink, animationLink] = await ipfsUpload(
                       ipfsCredentials,
                       image,
+                      animation,
                       manifestBuffer,
                     );
                     break;
                   case StorageType.Aws:
-                    [link, imageLink] = await awsUpload(
+                    [link, imageLink, animationLink] = await awsUpload(
                       awsS3Bucket,
                       image,
+                      animation,
                       manifestBuffer,
                     );
                     break;
                   case StorageType.Arweave:
                   default:
-                    [link, imageLink] = await arweaveUpload(
+                    [link, imageLink, animationLink] = await arweaveUpload(
                       walletKeyPair,
                       anchorProgram,
                       env,
                       image,
+                      animation,
                       manifestBuffer,
                       manifest,
                       assetKey.index,
                     );
                 }
-                if (link && imageLink) {
+                if (
+                  animation
+                    ? link && imageLink && animationLink
+                    : link && imageLink
+                ) {
                   log.debug('Updating cache for ', allIndexesInSlice[i]);
                   cacheContent.items[assetKey.index] = {
                     link,
@@ -286,7 +299,14 @@ export async function uploadV2({
                   saveCache(cacheName, env, cacheContent);
                 }
               } catch (err) {
-                log.error(`Error uploading file ${assetKey}`, err);
+                if (animation) {
+                  log.error(
+                    `Error uploading files ${manifest.image} + ${manifest.animation_url}`,
+                    err,
+                  );
+                } else {
+                  log.error(`Error uploading file ${manifest.image}`, err);
+                }
                 i--;
               }
             }
@@ -389,6 +409,7 @@ type Cache = {
  */
 type Manifest = {
   image: string;
+  animation_url: string;
   name: string;
   symbol: string;
   seller_fee_basis_points: number;
@@ -446,12 +467,20 @@ function getAssetManifest(dirname: string, assetKey: string): Manifest {
     fs.readFileSync(manifestPath).toString(),
   );
   manifest.image = manifest.image.replace('image', assetIndex);
-  // if (manifest.properties?.files?.length > 0) {
-  //   manifest.properties.files[0].uri = manifest.properties.files[0]?.uri?.replace(
-  //     'image',
-  //     assetIndex,
-  //   );
-  // }
+  if (manifest.properties?.files?.length > 0) {
+    manifest.properties.files[0].uri =
+      manifest.properties.files[0]?.uri?.replace('image', assetIndex);
+  }
+  if ('animation_url' in manifest) {
+    manifest.animation_url = manifest.animation_url.replace(
+      'animation_url',
+      assetIndex,
+    );
+    if (manifest.properties?.files?.length > 0) {
+      manifest.properties.files[1].uri =
+        manifest.properties.files[1]?.uri?.replace('animation_url', assetIndex);
+    }
+  }
   return manifest;
 }
 
@@ -680,42 +709,53 @@ export async function upload({
                   ? assetKey.index
                   : `${assetKey.index}.json`,
               );
+              let animation = undefined;
+              if ('animation_url' in manifest) {
+                animation = path.join(dirname, `${manifest.animation_url}`);
+              }
               const manifestBuffer = Buffer.from(JSON.stringify(manifest));
               if (i >= lastPrinted + tick || i === 0) {
                 lastPrinted = i;
                 log.info(`Processing asset: ${assetKey}`);
               }
 
-              let link, imageLink;
+              let link, imageLink, animationLink;
               try {
                 switch (storage) {
                   case StorageType.Ipfs:
-                    [link, imageLink] = await ipfsUpload(
+                    [link, imageLink, animationLink] = await ipfsUpload(
                       ipfsCredentials,
                       image,
+                      animation,
                       manifestBuffer,
                     );
                     break;
                   case StorageType.Aws:
-                    [link, imageLink] = await awsUpload(
+                    [link, imageLink, animationLink] = await awsUpload(
                       awsS3Bucket,
                       image,
+                      animation,
                       manifestBuffer,
                     );
                     break;
                   case StorageType.Arweave:
                   default:
-                    [link, imageLink] = await arweaveUpload(
+                    [link, imageLink, animationLink] = await arweaveUpload(
                       walletKeyPair,
                       anchorProgram,
                       env,
                       image,
+                      animation,
                       manifestBuffer,
                       manifest,
                       i,
                     );
                 }
-                if (link && imageLink) {
+                if (
+                  animation
+                    ? link && imageLink && animationLink
+                    : link && imageLink
+                ) {
                   log.debug('Updating cache for ', assetKey);
                   cache.items[assetKey.index] = {
                     link,
